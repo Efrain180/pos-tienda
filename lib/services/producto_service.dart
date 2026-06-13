@@ -29,38 +29,68 @@ class ProductoService {
     return id;
   }
 
-  Future<List<Producto>> obtenerProductos() async {
-    final db = await _dbService.database;
+Future<List<Producto>> obtenerProductos({
+  int limit = 50,
+  int offset = 0,
+  String estado = 'TODOS',
+}) async {
+  final db = await _dbService.database;
 
-    final result = await db.query(
-      'productos',
-      orderBy: 'nombre ASC',
-    );
+  final where = estado == 'TODOS' ? null : 'estado = ?';
+  final whereArgs = estado == 'TODOS' ? null : [estado];
 
-    return result.map((map) => Producto.fromMap(map)).toList();
+  final result = await db.query(
+    'productos',
+    where: where,
+    whereArgs: whereArgs,
+    orderBy: 'nombre ASC',
+    limit: limit,
+    offset: offset,
+  );
+
+  return result.map((map) => Producto.fromMap(map)).toList();
+}
+
+Future<List<Producto>> buscarProductos(
+  String texto, {
+  int limit = 50,
+  int offset = 0,
+  String estado = 'TODOS',
+}) async {
+  final db = await _dbService.database;
+
+  final filtros = <String>[
+    '''
+    (
+      nombre LIKE ?
+      OR codigo_barras LIKE ?
+      OR codigo_interno LIKE ?
+    )
+    '''
+  ];
+
+  final args = <Object?>[
+    '%$texto%',
+    '%$texto%',
+    '%$texto%',
+  ];
+
+  if (estado != 'TODOS') {
+    filtros.add('estado = ?');
+    args.add(estado);
   }
 
-  Future<List<Producto>> buscarProductos(String texto) async {
-    final db = await _dbService.database;
+  final result = await db.query(
+    'productos',
+    where: filtros.join(' AND '),
+    whereArgs: args,
+    orderBy: 'nombre ASC',
+    limit: limit,
+    offset: offset,
+  );
 
-    final result = await db.query(
-      'productos',
-      where: '''
-        nombre LIKE ?
-        OR codigo_barras LIKE ?
-        OR codigo_interno LIKE ?
-      ''',
-      whereArgs: [
-        '%$texto%',
-        '%$texto%',
-        '%$texto%',
-      ],
-      orderBy: 'nombre ASC',
-    );
-
-    return result.map((map) => Producto.fromMap(map)).toList();
-  }
-
+  return result.map((map) => Producto.fromMap(map)).toList();
+}
   Future<Producto?> obtenerProductoPorId(int id) async {
     final db = await _dbService.database;
 

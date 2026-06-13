@@ -2,6 +2,8 @@ import '../database/database_service.dart';
 import '../models/credito.dart';
 import '../models/movimiento_credito.dart';
 import 'auditoria_service.dart';
+import '../models/detalle_credito_venta.dart';
+import 'firebase_sync_service.dart';
 
 class CreditoService {
   final _dbService = DatabaseService.instance;
@@ -37,6 +39,46 @@ class CreditoService {
       return creditoId;
     });
   }
+  Future<void> liquidarDeudaCliente({
+  required int clienteId,
+  required int usuarioId,
+}) async {
+  final db = await _dbService.database;
+
+  await db.transaction((txn) async {
+    final creditos = await txn.query(
+      'creditos',
+      where: 'cliente_id = ? AND estado = ? AND saldo_actual > 0',
+      whereArgs: [clienteId, 'PENDIENTE'],
+      orderBy: 'fecha ASC',
+    );
+
+    for (final credito in creditos) {
+      final creditoId = credito['id'] as int;
+      final saldoActual = (credito['saldo_actual'] as num).toDouble();
+
+      if (saldoActual <= 0) continue;
+
+      await txn.insert('movimientos_credito', {
+        'credito_id': creditoId,
+        'tipo': 'ABONO',
+        'monto': saldoActual,
+        'fecha': DateTime.now().toIso8601String(),
+        'usuario_id': usuarioId,
+      });
+
+      await txn.update(
+        'creditos',
+        {
+          'saldo_actual': 0,
+          'estado': 'PAGADO',
+        },
+        where: 'id = ?',
+        whereArgs: [creditoId],
+      );
+    }
+  });
+}
 
   Future<void> registrarAbono({
     required int creditoId,
@@ -136,6 +178,9 @@ class CreditoService {
       registroId: creditoId,
       detalle: 'Abono registrado por \$${monto.toStringAsFixed(2)}',
     );
+    try {
+  FirebaseSyncService().sincronizarTodo().catchError((_) {});
+} catch (_) {}
   }
 
   Future<List<Credito>> obtenerCreditosCliente(int clienteId) async {
@@ -150,7 +195,29 @@ class CreditoService {
 
     return result.map((map) => Credito.fromMap(map)).toList();
   }
+  Future<List<DetalleCreditoVenta>> obtenerDetalleVentaCredito(
+  int ventaId,
+) async {
+  final db = await _dbService.database;
 
+  final result = await db.rawQuery('''
+    SELECT
+      p.nombre AS producto,
+      dv.cantidad,
+      dv.cantidad_mostrada,
+      dv.nombre_presentacion,
+      dv.precio_unitario,
+      dv.subtotal
+    FROM detalle_venta dv
+    INNER JOIN productos p
+      ON p.id = dv.producto_id
+    WHERE dv.venta_id = ?
+  ''', [ventaId]);
+
+  return result
+      .map((e) => DetalleCreditoVenta.fromMap(e))
+      .toList();
+}
   Future<List<Credito>> obtenerCreditosPendientesCliente(int clienteId) async {
     final db = await _dbService.database;
 

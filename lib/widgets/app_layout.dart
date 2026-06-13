@@ -14,6 +14,7 @@ import '../screens/ventas/ventas_screen.dart';
 import 'app_sidebar.dart';
 import '../screens/usuarios/usuarios_screen.dart';
 import '../screens/auditoria/auditoria_screen.dart';
+import '../screens/mermas/mermas_screen.dart';
 
 class AppLayout extends StatefulWidget {
   const AppLayout({super.key});
@@ -46,6 +47,14 @@ class _AppLayoutState extends State<AppLayout> {
       screen: const ComprasScreen(),
       permiso: 'REGISTRAR_COMPRA',
     ),
+    _MenuItem(
+  item: SidebarItem(
+    icon: Icons.delete_outline,
+    label: 'Mermas',
+  ),
+  screen: const MermasScreen(),
+  permiso: 'REGISTRAR_MERMA',
+),
     _MenuItem(
       item: SidebarItem(icon: Icons.people, label: 'Clientes'),
       screen: const ClientesScreen(),

@@ -83,13 +83,24 @@ class TicketPreviewDialog extends StatelessWidget {
                       Text('Tipo: ${venta['tipo_venta']}'),
                       const Divider(),
                       ...detalles.map((detalle) {
-                        final producto = detalle['producto'].toString();
-                        final cantidad =
-                            (detalle['cantidad'] as num).toDouble();
-                        final precio =
-                            (detalle['precio_unitario'] as num).toDouble();
-                        final subtotal =
-                            (detalle['subtotal'] as num).toDouble();
+       final productoBase = detalle['producto'].toString();
+
+final nombrePresentacion =
+    detalle['nombre_presentacion']?.toString().trim() ?? '';
+
+final producto = nombrePresentacion.isEmpty
+    ? productoBase
+    : '$productoBase - $nombrePresentacion';
+
+final cantidad = detalle['cantidad_mostrada'] == null
+    ? (detalle['cantidad'] as num).toDouble()
+    : (detalle['cantidad_mostrada'] as num).toDouble();
+
+final precio =
+    (detalle['precio_unitario'] as num).toDouble();
+
+final subtotal =
+    (detalle['subtotal'] as num).toDouble();
 
                         return Padding(
                           padding: const EdgeInsets.symmetric(vertical: 4),

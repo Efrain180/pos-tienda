@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "325841311507",
+    "project_id": "pos-tienda-5312b",
+    "storage_bucket": "pos-tienda-5312b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:325841311507:android:550ee7a2b322037bf86ce6",
+        "android_client_info": {
+          "package_name": "com.example.pos_desktop"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDocHIf3ZFCtL5HlLmTM5g8ZMIqK8eX6LE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -30,6 +30,9 @@ class TicketService {
       SELECT 
         p.nombre AS producto,
         dv.cantidad,
+        dv.cantidad_mostrada,
+        dv.nombre_presentacion,
+        dv.factor_conversion,
         dv.precio_unitario,
         dv.descuento,
         dv.subtotal
@@ -40,7 +43,10 @@ class TicketService {
     ''', [ventaId]);
 
     final pagos = await db.rawQuery('''
-      SELECT tipo_pago, monto, referencia
+      SELECT 
+        tipo_pago, 
+        monto, 
+        referencia
       FROM pagos_venta
       WHERE venta_id = ?
     ''', [ventaId]);
@@ -50,7 +56,8 @@ class TicketService {
       limit: 1,
     );
 
-    final config = configResult.isEmpty ? <String, dynamic>{} : configResult.first;
+    final config =
+        configResult.isEmpty ? <String, dynamic>{} : configResult.first;
 
     return {
       'venta': ventaResult.first,

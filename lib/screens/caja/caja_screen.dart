@@ -17,57 +17,73 @@ class CajaScreen extends StatelessWidget {
       return const Center(child: CircularProgressIndicator());
     }
 
-    return Padding(
-  padding: const EdgeInsets.all(24),
-  child: Column(
-    children: [
-      Row(
-        children: [
-          const Expanded(
-            child: Text(
-              'Corte de caja',
-              style: TextStyle(
-                fontSize: 30,
-                fontWeight: FontWeight.bold,
+    return Container(
+      color: const Color(0xFFF4F6F8),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.point_of_sale_outlined, size: 28),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    'Corte de caja',
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                _CajaEstadoChip(
+                  texto: provider.cajaAbierta == null
+                      ? 'Caja cerrada'
+                      : 'Caja abierta',
+                  color: provider.cajaAbierta == null
+                      ? Colors.red
+                      : Colors.green,
+                ),
+                const SizedBox(width: 12),
+                IconButton.filledTonal(
+                  tooltip: 'Actualizar',
+                  onPressed: () {
+                    context.read<CajaProvider>().cargarCaja();
+                  },
+                  icon: const Icon(Icons.refresh),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 14),
+
+            Expanded(
+              child: Column(
+                children: [
+                  if (provider.cajaAbierta == null)
+                    _CajaCerradaView()
+                  else
+                    Expanded(
+                      child: _CajaAbiertaView(
+                        caja: provider.cajaAbierta!,
+                      ),
+                    ),
+
+                  if (provider.cajaAbierta == null) ...[
+                    const SizedBox(height: 14),
+                    Expanded(
+                      child: _HistorialCajasView(
+                        cajas: provider.historial,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
-          ),
-          IconButton(
-            tooltip: 'Actualizar',
-            onPressed: () {
-              context.read<CajaProvider>().cargarCaja();
-            },
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
-      ),
-
-      const SizedBox(height: 20),
-
-      Expanded(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              if (provider.cajaAbierta == null)
-                _CajaCerradaView()
-              else
-                _CajaAbiertaView(caja: provider.cajaAbierta!),
-
-              const SizedBox(height: 20),
-
-              SizedBox(
-                height: 250,
-                child: _HistorialCajasView(
-                  cajas: provider.historial,
-                ),
-              ),
-            ],
-          ),
+          ],
         ),
       ),
-    ],
-  ),
-);
+    );
   }
 }
 
@@ -79,14 +95,41 @@ class _CajaCerradaView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(22),
         child: Row(
           children: [
+            CircleAvatar(
+              radius: 28,
+              backgroundColor: Colors.red.withOpacity(0.10),
+              child: const Icon(
+                Icons.lock_outline,
+                color: Colors.red,
+                size: 30,
+              ),
+            ),
+            const SizedBox(width: 16),
             const Expanded(
-              child: Text(
-                'No hay caja abierta',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'No hay caja abierta',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Ingresa el monto inicial para comenzar operaciones del día.',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ],
               ),
             ),
             SizedBox(
@@ -94,41 +137,51 @@ class _CajaCerradaView extends StatelessWidget {
               child: TextField(
                 controller: montoInicialController,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Monto inicial',
-                  border: OutlineInputBorder(),
+                  prefixText: '\$ ',
+                  filled: true,
+                  fillColor: const Color(0xFFF7F8FA),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
                 ),
               ),
             ),
             const SizedBox(width: 12),
-            ElevatedButton.icon(
-              onPressed: () async {
-                final monto =
-                    double.tryParse(montoInicialController.text.trim()) ?? 0;
+            SizedBox(
+              height: 52,
+              child: FilledButton.icon(
+                onPressed: () async {
+                  final monto =
+                      double.tryParse(montoInicialController.text.trim()) ?? 0;
 
-                try {
-final usuarioId = context.read<AuthProvider>().usuarioActual!.id!;
+                  try {
+                    final usuarioId =
+                        context.read<AuthProvider>().usuarioActual!.id!;
 
-await context.read<CajaProvider>().abrirCaja(
-  montoInicial: monto,
-  usuarioId: usuarioId,
-);
+                    await context.read<CajaProvider>().abrirCaja(
+                          montoInicial: monto,
+                          usuarioId: usuarioId,
+                        );
 
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Caja abierta')),
-                    );
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Caja abierta')),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error: $e')),
+                      );
+                    }
                   }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error: $e')),
-                    );
-                  }
-                }
-              },
-              icon: const Icon(Icons.lock_open),
-              label: const Text('Abrir caja'),
+                },
+                icon: const Icon(Icons.lock_open),
+                label: const Text('Abrir caja'),
+              ),
             ),
           ],
         ),
@@ -153,54 +206,103 @@ class _CajaAbiertaView extends StatelessWidget {
             _ResumenCajaCard(
               titulo: 'Monto inicial',
               valor: '\$${caja.montoInicial.toStringAsFixed(2)}',
+              icono: Icons.account_balance_wallet_outlined,
+              color: Colors.blue,
             ),
+            const SizedBox(width: 12),
             _ResumenCajaCard(
               titulo: 'Esperado',
               valor: '\$${caja.montoEsperado.toStringAsFixed(2)}',
+              icono: Icons.savings_outlined,
+              color: Colors.green,
             ),
+            const SizedBox(width: 12),
             _ResumenCajaCard(
               titulo: 'Estado',
               valor: caja.estado,
-            ),
-            _ResumenCajaCard(
-              titulo: 'Apertura',
-              valor: caja.fechaApertura.substring(0, 10),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            ElevatedButton.icon(
-              onPressed: () => _registrarGasto(context),
-              icon: const Icon(Icons.money_off),
-              label: const Text('Registrar gasto'),
+              icono: Icons.lock_open,
+              color: Colors.orange,
             ),
             const SizedBox(width: 12),
-            ElevatedButton.icon(
-              onPressed: () => _cerrarCaja(context, caja),
-              icon: const Icon(Icons.lock),
-              label: const Text('Cerrar caja'),
+            _ResumenCajaCard(
+              titulo: 'Apertura',
+              valor: _formatearFecha(caja.fechaApertura),
+              icono: Icons.calendar_today_outlined,
+              color: Colors.purple,
             ),
           ],
         ),
-        const SizedBox(height: 16),
-SizedBox(
-  height: 360,
-  child: Row(
-    children: [
-      Expanded(
-        child: _ReporteCajaView(caja: caja),
-      ),
-      const SizedBox(width: 16),
-      Expanded(
-        child: _MovimientosCajaView(cajaId: caja.id!),
-      ),
-    ],
-  ),
-),
+
+        const SizedBox(height: 14),
+
+        Row(
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: 52,
+                child: OutlinedButton.icon(
+                  onPressed: () => _registrarGasto(context),
+                  icon: const Icon(Icons.money_off_outlined),
+                  label: const Text('Registrar gasto'),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: SizedBox(
+                height: 52,
+                child: FilledButton.icon(
+                  onPressed: () => _cerrarCaja(context, caja),
+                  icon: const Icon(Icons.lock_outline),
+                  label: const Text('Cerrar caja'),
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 14),
+
+        Expanded(
+          child: Row(
+            children: [
+              Expanded(
+                flex: 5,
+                child: _ReporteCajaView(caja: caja),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                flex: 5,
+                child: _MovimientosCajaView(cajaId: caja.id!),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 14),
+
+        SizedBox(
+          height: 210,
+          child: _HistorialCajasView(
+            cajas: context.watch<CajaProvider>().historial,
+          ),
+        ),
       ],
     );
+  }
+
+  static String _formatearFecha(String fecha) {
+    try {
+      final date = DateTime.parse(fecha);
+      final dia = date.day.toString().padLeft(2, '0');
+      final mes = date.month.toString().padLeft(2, '0');
+      final hora = date.hour.toString().padLeft(2, '0');
+      final minuto = date.minute.toString().padLeft(2, '0');
+
+      return '$dia/$mes $hora:$minuto';
+    } catch (_) {
+      return fecha;
+    }
   }
 
   void _registrarGasto(BuildContext context) {
@@ -212,35 +314,62 @@ SizedBox(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Registrar gasto'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: Color(0xFFFFF3E0),
+                child: Icon(
+                  Icons.money_off_outlined,
+                  color: Colors.orange,
+                ),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Registrar gasto',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
+              ),
+            ],
+          ),
           content: SizedBox(
-            width: 480,
+            width: 500,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: categoriaController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Categoría',
                     hintText: 'Luz, renta, gasolina, papelería...',
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: descripcionController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Descripción',
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: montoController,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Monto',
-                    border: OutlineInputBorder(),
+                    prefixText: '\$ ',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                 ),
               ],
@@ -251,7 +380,7 @@ SizedBox(
               onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Cancelar'),
             ),
-            ElevatedButton(
+            FilledButton.icon(
               onPressed: () async {
                 final categoria = categoriaController.text.trim();
                 final descripcion = descripcionController.text.trim();
@@ -265,12 +394,15 @@ SizedBox(
                 }
 
                 try {
-await context.read<CajaProvider>().registrarGasto(
-  categoria: categoria,
-  descripcion: descripcion.isEmpty ? null : descripcion,
-  monto: monto,
-  usuarioId: 1,
-);
+                  final usuarioId =
+                      context.read<AuthProvider>().usuarioActual!.id!;
+
+                  await context.read<CajaProvider>().registrarGasto(
+                        categoria: categoria,
+                        descripcion: descripcion.isEmpty ? null : descripcion,
+                        monto: monto,
+                        usuarioId: usuarioId,
+                      );
 
                   if (dialogContext.mounted) {
                     Navigator.pop(dialogContext);
@@ -283,7 +415,8 @@ await context.read<CajaProvider>().registrarGasto(
                   }
                 }
               },
-              child: const Text('Guardar'),
+              icon: const Icon(Icons.save_outlined),
+              label: const Text('Guardar'),
             ),
           ],
         );
@@ -300,26 +433,67 @@ await context.read<CajaProvider>().registrarGasto(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Cerrar caja'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: Color(0xFFE3F2FD),
+                child: Icon(
+                  Icons.lock_outline,
+                  color: Colors.blue,
+                ),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Cerrar caja',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
+              ),
+            ],
+          ),
           content: SizedBox(
-            width: 480,
+            width: 500,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                ListTile(
-                  title: const Text('Monto esperado'),
-                  trailing: Text(
-                    '\$${caja.montoEsperado.toStringAsFixed(2)}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF7F8FA),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey.withOpacity(0.14)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Monto esperado',
+                          style: TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                      Text(
+                        '\$${caja.montoEsperado.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: montoContadoController,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Monto contado físicamente',
-                    border: OutlineInputBorder(),
+                    prefixText: '\$ ',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                 ),
               ],
@@ -330,18 +504,19 @@ await context.read<CajaProvider>().registrarGasto(
               onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Cancelar'),
             ),
-            ElevatedButton(
+            FilledButton.icon(
               onPressed: () async {
                 final contado =
                     double.tryParse(montoContadoController.text.trim()) ?? 0;
 
                 try {
-final usuarioId = context.read<AuthProvider>().usuarioActual!.id!;
+                  final usuarioId =
+                      context.read<AuthProvider>().usuarioActual!.id!;
 
-await context.read<CajaProvider>().cerrarCaja(
-  montoContado: contado,
-  usuarioId: usuarioId,
-);
+                  await context.read<CajaProvider>().cerrarCaja(
+                        montoContado: contado,
+                        usuarioId: usuarioId,
+                      );
 
                   if (dialogContext.mounted) {
                     Navigator.pop(dialogContext);
@@ -360,7 +535,8 @@ await context.read<CajaProvider>().cerrarCaja(
                   }
                 }
               },
-              child: const Text('Cerrar caja'),
+              icon: const Icon(Icons.lock_outline),
+              label: const Text('Cerrar caja'),
             ),
           ],
         );
@@ -368,7 +544,6 @@ await context.read<CajaProvider>().cerrarCaja(
     );
   }
 }
-
 class _MovimientosCajaView extends StatelessWidget {
   final int cajaId;
 
@@ -379,6 +554,10 @@ class _MovimientosCajaView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+      ),
       child: FutureBuilder<List<MovimientoCaja>>(
         future: context.read<CajaProvider>().obtenerMovimientosCaja(cajaId),
         builder: (context, snapshot) {
@@ -389,30 +568,74 @@ class _MovimientosCajaView extends StatelessWidget {
           }
 
           if (movimientos.isEmpty) {
-            return const Center(child: Text('Sin movimientos de caja'));
+            return const Center(
+              child: Text('Sin movimientos de caja'),
+            );
           }
 
-          return ListView.separated(
-            itemCount: movimientos.length,
-            separatorBuilder: (_, index) => const Divider(height: 1),
-            itemBuilder: (context, index) {
-              final mov = movimientos[index];
+          return Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                child: const Row(
+                  children: [
+                    Icon(Icons.receipt_long_outlined),
+                    SizedBox(width: 8),
+                    Text(
+                      'Movimientos',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: ListView.separated(
+                  itemCount: movimientos.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final mov = movimientos[index];
 
-              return ListTile(
-                leading: Icon(
-                  mov.monto >= 0 ? Icons.arrow_downward : Icons.arrow_upward,
-                  color: mov.monto >= 0 ? Colors.green : Colors.red,
+                    final positivo = mov.monto >= 0;
+
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: positivo
+                            ? Colors.green.withOpacity(0.12)
+                            : Colors.red.withOpacity(0.12),
+                        child: Icon(
+                          positivo
+                              ? Icons.arrow_downward
+                              : Icons.arrow_upward,
+                          color: positivo ? Colors.green : Colors.red,
+                        ),
+                      ),
+                      title: Text(
+                        mov.tipo,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      subtitle: Text(
+                        mov.referencia ?? 'Sin referencia',
+                      ),
+                      trailing: Text(
+                        '\$${mov.monto.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          color: positivo
+                              ? Colors.green
+                              : Colors.red,
+                        ),
+                      ),
+                    );
+                  },
                 ),
-                title: Text(mov.tipo),
-                subtitle: Text(
-                  '${mov.referencia ?? 'Sin referencia'} | ${mov.fecha.substring(0, 10)}',
-                ),
-                trailing: Text(
-                  '\$${mov.monto.toStringAsFixed(2)}',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-              );
-            },
+              ),
+            ],
           );
         },
       ),
@@ -430,40 +653,251 @@ class _HistorialCajasView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+      ),
       child: cajas.isEmpty
-          ? const Center(child: Text('No hay cortes registrados'))
-          : ListView.separated(
-              itemCount: cajas.length,
-              separatorBuilder: (_, index) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final caja = cajas[index];
-
-                return ListTile(
-                  leading: Icon(
-                    caja.estado == 'ABIERTA'
-                        ? Icons.lock_open
-                        : Icons.lock_outline,
-                  ),
-                  title: Text('Caja #${caja.id} - ${caja.estado}'),
-                  subtitle: Text(
-                    'Apertura: ${caja.fechaApertura.substring(0, 10)}'
-                    '${caja.fechaCierre != null ? ' | Cierre: ${caja.fechaCierre!.substring(0, 10)}' : ''}',
-                  ),
-                  trailing: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.end,
+          ? const Center(
+              child: Text('No hay cortes registrados'),
+            )
+          : Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  child: const Row(
                     children: [
-                      Text('Esperado: \$${caja.montoEsperado.toStringAsFixed(2)}'),
-                      if (caja.montoContado != null)
-                        Text(
-                          'Contado: \$${caja.montoContado!.toStringAsFixed(2)}',
+                      Icon(Icons.history),
+                      SizedBox(width: 8),
+                      Text(
+                        'Historial de cortes',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
                         ),
+                      ),
                     ],
                   ),
-                );
-              },
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: cajas.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final caja = cajas[index];
+
+                      return ListTile(
+                        onTap: () => _mostrarDetalleCaja(context, caja),
+                        leading: CircleAvatar(
+                          backgroundColor: caja.estado == 'ABIERTA'
+                              ? Colors.green.withOpacity(0.12)
+                              : Colors.grey.withOpacity(0.12),
+                          child: Icon(
+                            caja.estado == 'ABIERTA'
+                                ? Icons.lock_open
+                                : Icons.lock_outline,
+                            color: caja.estado == 'ABIERTA'
+                                ? Colors.green
+                                : Colors.grey,
+                          ),
+                        ),
+                        title: Text(
+                          'Caja #${caja.id}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        subtitle: Text(
+                          '${caja.estado} • ${_fechaCorta(caja.fechaApertura)}',
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  'Esperado: \$${caja.montoEsperado.toStringAsFixed(2)}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                if (caja.montoContado != null)
+                                  Text(
+                                    'Contado: \$${caja.montoContado!.toStringAsFixed(2)}',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.visibility_outlined),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
     );
+  }
+
+  void _mostrarDetalleCaja(BuildContext context, Caja caja) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Row(
+            children: [
+              Icon(
+                caja.estado == 'ABIERTA'
+                    ? Icons.lock_open
+                    : Icons.lock_outline,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Detalle caja #${caja.id}',
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+              ),
+              _CajaEstadoChip(
+                texto: caja.estado,
+                color: caja.estado == 'ABIERTA' ? Colors.green : Colors.grey,
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: 860,
+            height: 560,
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    _DetalleCajaCard(
+                      titulo: 'Monto inicial',
+                      valor: '\$${caja.montoInicial.toStringAsFixed(2)}',
+                      icono: Icons.account_balance_wallet_outlined,
+                      color: Colors.blue,
+                    ),
+                    const SizedBox(width: 12),
+                    _DetalleCajaCard(
+                      titulo: 'Esperado',
+                      valor: '\$${caja.montoEsperado.toStringAsFixed(2)}',
+                      icono: Icons.savings_outlined,
+                      color: Colors.green,
+                    ),
+                    const SizedBox(width: 12),
+                    _DetalleCajaCard(
+                      titulo: 'Contado',
+                      valor: caja.montoContado == null
+                          ? 'Sin cierre'
+                          : '\$${caja.montoContado!.toStringAsFixed(2)}',
+                      icono: Icons.payments_outlined,
+                      color: Colors.orange,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    _DetalleCajaCard(
+                      titulo: 'Faltante',
+                      valor: '\$${caja.faltante.toStringAsFixed(2)}',
+                      icono: Icons.trending_down,
+                      color: caja.faltante > 0 ? Colors.red : Colors.grey,
+                    ),
+                    const SizedBox(width: 12),
+                    _DetalleCajaCard(
+                      titulo: 'Sobrante',
+                      valor: '\$${caja.sobrante.toStringAsFixed(2)}',
+                      icono: Icons.trending_up,
+                      color: caja.sobrante > 0 ? Colors.green : Colors.grey,
+                    ),
+                    const SizedBox(width: 12),
+                    _DetalleCajaCard(
+                      titulo: 'Apertura',
+                      valor: _fechaLarga(caja.fechaApertura),
+                      icono: Icons.calendar_today_outlined,
+                      color: Colors.purple,
+                    ),
+                  ],
+                ),
+                if (caja.fechaCierre != null) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      _DetalleCajaCard(
+                        titulo: 'Cierre',
+                        valor: _fechaLarga(caja.fechaCierre!),
+                        icono: Icons.event_available_outlined,
+                        color: Colors.indigo,
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 14),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _ReporteCajaView(caja: caja),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _MovimientosCajaView(cajaId: caja.id!),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cerrar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  static String _fechaCorta(String fecha) {
+    try {
+      final date = DateTime.parse(fecha);
+      final dia = date.day.toString().padLeft(2, '0');
+      final mes = date.month.toString().padLeft(2, '0');
+      final anio = date.year.toString();
+
+      return '$dia/$mes/$anio';
+    } catch (_) {
+      return fecha;
+    }
+  }
+
+  static String _fechaLarga(String fecha) {
+    try {
+      final date = DateTime.parse(fecha);
+      final dia = date.day.toString().padLeft(2, '0');
+      final mes = date.month.toString().padLeft(2, '0');
+      final anio = date.year.toString();
+      final hora = date.hour.toString().padLeft(2, '0');
+      final minuto = date.minute.toString().padLeft(2, '0');
+
+      return '$dia/$mes/$anio $hora:$minuto';
+    } catch (_) {
+      return fecha;
+    }
   }
 }
 class _ReporteCajaView extends StatelessWidget {
@@ -476,6 +910,10 @@ class _ReporteCajaView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+      ),
       child: FutureBuilder<Map<String, double>>(
         future: context.read<CajaProvider>().obtenerResumenCaja(caja.id!),
         builder: (context, snapshot) {
@@ -486,60 +924,71 @@ class _ReporteCajaView extends StatelessWidget {
           }
 
           if (data == null) {
-            return const Center(child: Text('No se pudo cargar el reporte'));
+            return const Center(
+              child: Text('No se pudo cargar el reporte'),
+            );
           }
 
-          final gastos = data['gastos'] ?? 0;
-
-          return Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Reporte de caja',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-                _LineaReporte(
-                  titulo: 'Monto inicial',
-                  valor: data['apertura'] ?? 0,
-                ),
-                _LineaReporte(
-                  titulo: 'Ventas efectivo',
-                  valor: data['ventas_efectivo'] ?? 0,
-                ),
-                _LineaReporte(
-                  titulo: 'Abonos crédito',
-                  valor: data['abonos_credito'] ?? 0,
-                ),
-                _LineaReporte(
-                  titulo: 'Gastos',
-                  valor: gastos,
-                ),
-                const Divider(),
-                _LineaReporte(
-                  titulo: 'Total esperado',
-                  valor: data['esperado'] ?? 0,
-                  destacado: true,
-                ),
-                if (caja.montoContado != null) ...[
-                  const SizedBox(height: 12),
+          return SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.analytics_outlined),
+                      SizedBox(width: 8),
+                      Text(
+                        'Reporte de caja',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
                   _LineaReporte(
-                    titulo: 'Monto contado',
-                    valor: caja.montoContado!,
+                    titulo: 'Monto inicial',
+                    valor: data['apertura'] ?? 0,
+                  ),
+                  _LineaReporte(
+                    titulo: 'Ventas efectivo',
+                    valor: data['ventas_efectivo'] ?? 0,
+                  ),
+                  _LineaReporte(
+                    titulo: 'Abonos crédito',
+                    valor: data['abonos_credito'] ?? 0,
+                  ),
+                  _LineaReporte(
+                    titulo: 'Gastos',
+                    valor: data['gastos'] ?? 0,
+                  ),
+                  const Divider(height: 28),
+                  _LineaReporte(
+                    titulo: 'Total esperado',
+                    valor: data['esperado'] ?? 0,
                     destacado: true,
                   ),
-                  _LineaReporte(
-                    titulo: 'Faltante',
-                    valor: caja.faltante,
-                  ),
-                  _LineaReporte(
-                    titulo: 'Sobrante',
-                    valor: caja.sobrante,
-                  ),
+                  if (caja.montoContado != null) ...[
+                    const SizedBox(height: 10),
+                    _LineaReporte(
+                      titulo: 'Monto contado',
+                      valor: caja.montoContado!,
+                      destacado: true,
+                    ),
+                    _LineaReporte(
+                      titulo: 'Faltante',
+                      valor: caja.faltante,
+                    ),
+                    _LineaReporte(
+                      titulo: 'Sobrante',
+                      valor: caja.sobrante,
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           );
         },
@@ -547,7 +996,6 @@ class _ReporteCajaView extends StatelessWidget {
     );
   }
 }
-
 class _LineaReporte extends StatelessWidget {
   final String titulo;
   final double valor;
@@ -593,31 +1041,157 @@ class _LineaReporte extends StatelessWidget {
 class _ResumenCajaCard extends StatelessWidget {
   final String titulo;
   final String valor;
+  final IconData icono;
+  final Color color;
 
   const _ResumenCajaCard({
     required this.titulo,
     required this.valor,
+    required this.icono,
+    required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Text(titulo),
-              const SizedBox(height: 6),
-              Text(
-                valor,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
+      child: Container(
+        height: 92,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.grey.withOpacity(0.12)),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: color.withOpacity(0.12),
+              child: Icon(icono, color: color),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    titulo,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    valor,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CajaEstadoChip extends StatelessWidget {
+  final String texto;
+  final Color color;
+
+  const _CajaEstadoChip({
+    required this.texto,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 7,
+      ),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.11),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        texto,
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w900,
+          color: color,
+        ),
+      ),
+    );
+  }
+}
+class _DetalleCajaCard extends StatelessWidget {
+  final String titulo;
+  final String valor;
+  final IconData icono;
+  final Color color;
+
+  const _DetalleCajaCard({
+    required this.titulo,
+    required this.valor,
+    required this.icono,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        height: 78,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.09),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.18)),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: color.withOpacity(0.14),
+              child: Icon(icono, color: color),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    titulo,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade700,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    valor,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

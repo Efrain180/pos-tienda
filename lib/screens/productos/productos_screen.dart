@@ -15,17 +15,17 @@ class ProductosScreen extends StatelessWidget {
         children: [
           TabBar(
             tabs: [
+              Tab(text: 'Productos'),
               Tab(text: 'Categorías'),
               Tab(text: 'Marcas'),
-              Tab(text: 'Productos'),
             ],
           ),
           Expanded(
             child: TabBarView(
               children: [
+                ProductosView(),
                 CategoriasView(),
                 MarcasView(),
-                ProductosView(),
               ],
             ),
           ),

@@ -80,6 +80,96 @@ Future<double> gananciaEstimadaMes() async {
 
     return result.map((map) => Producto.fromMap(map)).toList();
   }
+  Future<List<Producto>> productosAgotados() async {
+  final db = await _dbService.database;
+
+  final result = await db.query(
+    'productos',
+    where: 'stock_actual <= 0 AND estado = ?',
+    whereArgs: ['ACTIVO'],
+    orderBy: 'nombre ASC',
+  );
+
+  return result.map((map) => Producto.fromMap(map)).toList();
+}
+
+Future<double> fiadoPendiente() async {
+  final db = await _dbService.database;
+
+  final result = await db.rawQuery('''
+    SELECT COALESCE(SUM(saldo_actual), 0) AS total
+    FROM creditos
+    WHERE estado = 'PENDIENTE'
+  ''');
+
+  return (result.first['total'] as num).toDouble();
+}
+
+Future<double> mermasMes() async {
+  final db = await _dbService.database;
+  final mes = DateTime.now().toIso8601String().substring(0, 7);
+
+  final result = await db.rawQuery('''
+    SELECT COALESCE(SUM(cantidad), 0) AS total
+    FROM mermas
+    WHERE substr(fecha, 1, 7) = ?
+  ''', [mes]);
+
+  return (result.first['total'] as num).toDouble();
+}
+
+Future<List<Map<String, dynamic>>> productosMasVendidosSemana() async {
+  final db = await _dbService.database;
+
+  final ahora = DateTime.now();
+  final inicioSemana = DateTime(
+    ahora.year,
+    ahora.month,
+    ahora.day,
+  ).subtract(Duration(days: ahora.weekday - 1));
+
+  final finSemana = inicioSemana.add(const Duration(days: 7));
+
+  return db.rawQuery('''
+    SELECT 
+      p.nombre AS producto,
+      SUM(dv.cantidad) AS cantidad
+    FROM detalle_venta dv
+    INNER JOIN ventas v ON v.id = dv.venta_id
+    INNER JOIN productos p ON p.id = dv.producto_id
+    WHERE v.fecha >= ?
+      AND v.fecha < ?
+      AND v.estado = 'COMPLETADA'
+    GROUP BY p.id
+    ORDER BY cantidad DESC
+    LIMIT 10
+  ''', [
+    inicioSemana.toIso8601String(),
+    finSemana.toIso8601String(),
+  ]);
+}
+
+Future<List<Map<String, dynamic>>> productosSinMovimiento() async {
+  final db = await _dbService.database;
+
+  return db.rawQuery('''
+    SELECT
+      p.id,
+      p.nombre,
+      p.stock_actual,
+      MAX(v.fecha) AS ultima_venta
+    FROM productos p
+    LEFT JOIN detalle_venta dv ON dv.producto_id = p.id
+    LEFT JOIN ventas v ON v.id = dv.venta_id AND v.estado = 'COMPLETADA'
+    WHERE p.estado = 'ACTIVO'
+      AND p.stock_actual > 0
+    GROUP BY p.id
+    HAVING ultima_venta IS NULL
+       OR ultima_venta < date('now', '-30 day')
+    ORDER BY ultima_venta ASC
+    LIMIT 10
+  ''');
+}
 
   Future<List<Map<String, dynamic>>> productosPorVencer({
     int dias = 30,

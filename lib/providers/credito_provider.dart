@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../models/credito.dart';
 import '../models/movimiento_credito.dart';
 import '../services/credito_service.dart';
+import '../models/detalle_credito_venta.dart';
+
 
 class CreditoProvider extends ChangeNotifier {
   final CreditoService _service = CreditoService();
@@ -56,6 +58,9 @@ class CreditoProvider extends ChangeNotifier {
   Future<List<Credito>> obtenerCreditosCliente(int clienteId) {
     return _service.obtenerCreditosCliente(clienteId);
   }
+Future<List<DetalleCreditoVenta>> obtenerDetalleVentaCredito(int ventaId) {
+  return _service.obtenerDetalleVentaCredito(ventaId);
+}
 
   Future<List<Credito>> obtenerCreditosPendientesCliente(int clienteId) {
     return _service.obtenerCreditosPendientesCliente(clienteId);
@@ -68,4 +73,16 @@ class CreditoProvider extends ChangeNotifier {
   Future<double> obtenerSaldoCliente(int clienteId) {
     return _service.obtenerSaldoCliente(clienteId);
   }
+  Future<void> liquidarDeudaCliente({
+  required int clienteId,
+  required int usuarioId,
+}) async {
+  await _service.liquidarDeudaCliente(
+    clienteId: clienteId,
+    usuarioId: usuarioId,
+  );
+
+  notifyListeners();
+}
+
 }

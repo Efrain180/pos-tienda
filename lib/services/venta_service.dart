@@ -3,6 +3,7 @@ import '../models/detalle_venta.dart';
 import '../models/pago_venta.dart';
 import '../models/venta.dart';
 import 'auditoria_service.dart';
+import 'firebase_sync_service.dart';
 
 class VentaService {
   final _dbService = DatabaseService.instance;
@@ -37,15 +38,17 @@ final ventaId = await db.transaction((txn) async {
       final ventaId = await txn.insert('ventas', venta.toMap());
 
       for (final detalle in detalles) {
-        final detalleVentaId = await txn.insert('detalle_venta', {
-          'venta_id': ventaId,
-          'producto_id': detalle.productoId,
-          'cantidad': detalle.cantidad,
-          'precio_unitario': detalle.precioUnitario,
-          'descuento': detalle.descuento,
-          'subtotal': detalle.subtotal,
-        });
-
+final detalleVentaId = await txn.insert('detalle_venta', {
+  'venta_id': ventaId,
+  'producto_id': detalle.productoId,
+  'cantidad': detalle.cantidad,
+  'cantidad_mostrada': detalle.cantidadMostrada ?? detalle.cantidad,
+  'nombre_presentacion': detalle.nombrePresentacion,
+  'factor_conversion': detalle.factorConversion ?? 1,
+  'precio_unitario': detalle.precioUnitario,
+  'descuento': detalle.descuento,
+  'subtotal': detalle.subtotal,
+});
         double pendiente = detalle.cantidad;
 
         final lotes = await txn.query(
@@ -181,20 +184,58 @@ if (venta.tipoVenta == 'CONTADO') {
   registroId: ventaId,
   detalle: 'Venta ${venta.tipoVenta} por \$${venta.total.toStringAsFixed(2)}',
 );
+try {
+  FirebaseSyncService().sincronizarTodo().catchError((_) {});
+
+} catch (_) {}
 
 return ventaId;
   }
 
-  Future<List<Venta>> obtenerVentas() async {
-    final db = await _dbService.database;
+Future<List<Venta>> obtenerVentas({
+  int limit = 50,
+  int offset = 0,
+  String busqueda = '',
+}) async {
+  final db = await _dbService.database;
 
+  final texto = busqueda.trim();
+
+  if (texto.isEmpty) {
     final result = await db.query(
       'ventas',
       orderBy: 'fecha DESC',
+      limit: limit,
+      offset: offset,
     );
 
     return result.map((map) => Venta.fromMap(map)).toList();
   }
+
+  final ventaId = int.tryParse(texto.replaceAll('#', ''));
+
+  final result = await db.rawQuery('''
+    SELECT v.*
+    FROM ventas v
+    INNER JOIN clientes c ON c.id = v.cliente_id
+    WHERE 
+      (? IS NOT NULL AND v.id = ?)
+      OR c.nombre LIKE ?
+      OR v.tipo_venta LIKE ?
+    ORDER BY v.fecha DESC
+    LIMIT ?
+    OFFSET ?
+  ''', [
+    ventaId,
+    ventaId,
+    '%$texto%',
+    '%$texto%',
+    limit,
+    offset,
+  ]);
+
+  return result.map((map) => Venta.fromMap(map)).toList();
+}
 
   Future<List<DetalleVenta>> obtenerDetallesVenta(int ventaId) async {
     final db = await _dbService.database;

@@ -2,6 +2,7 @@ import '../database/database_service.dart';
 import '../models/caja.dart';
 import '../models/movimiento_caja.dart';
 import 'auditoria_service.dart';
+import 'firebase_sync_service.dart';
 
 class CajaService {
   final _dbService = DatabaseService.instance;
@@ -93,6 +94,8 @@ class CajaService {
       registroId: cajaId,
       detalle: 'Caja abierta con \$${montoInicial.toStringAsFixed(2)}',
     );
+
+    
 
     return cajaId;
   }
@@ -202,6 +205,10 @@ class CajaService {
       detalle:
           '$categoria por \$${monto.toStringAsFixed(2)}${descripcion == null || descripcion.isEmpty ? '' : ' - $descripcion'}',
     );
+    try {
+  FirebaseSyncService().sincronizarTodo().catchError((_) {});
+
+} catch (_) {}
   }
 
   Future<void> cerrarCaja({
@@ -255,6 +262,10 @@ class CajaService {
       detalle:
           'Caja cerrada. Esperado \$${esperado.toStringAsFixed(2)}, contado \$${montoContado.toStringAsFixed(2)}, faltante \$${faltante.toStringAsFixed(2)}, sobrante \$${sobrante.toStringAsFixed(2)}',
     );
+    try {
+  FirebaseSyncService().sincronizarTodo().catchError((_) {});
+
+} catch (_) {}
   }
 
   Future<List<MovimientoCaja>> obtenerMovimientosCaja(int cajaId) async {

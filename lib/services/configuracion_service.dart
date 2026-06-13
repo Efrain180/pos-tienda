@@ -2,6 +2,7 @@ import '../database/database_service.dart';
 import '../models/configuracion.dart';
 import 'auditoria_service.dart';
 
+
 class ConfiguracionService {
   final _dbService = DatabaseService.instance;
   final _auditoriaService = AuditoriaService();

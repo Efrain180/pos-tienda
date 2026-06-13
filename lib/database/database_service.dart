@@ -30,7 +30,7 @@ class DatabaseService {
 
     return await openDatabase(
       dbPath,
-      version: 3,
+      version: 7,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -41,10 +41,47 @@ class DatabaseService {
   
 
 Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-if (oldVersion < 3) {
+  if (oldVersion < 3) {
+    await db.execute('''
+      ALTER TABLE configuracion
+      ADD COLUMN modo_ticket TEXT NOT NULL DEFAULT 'PREGUNTAR'
+    ''');
+  }
+
+  if (oldVersion < 4) {
+    await _crearPresentacionesProducto(db);
+  }
+
+  if (oldVersion < 5) {
+    await _crearMermas(db);
+  }
+
+  if (oldVersion < 6) {
+    await _crearMermas(db);
+
+    try {
+      await db.execute('''
+        ALTER TABLE mermas
+        ADD COLUMN descuenta_stock INTEGER NOT NULL DEFAULT 1
+      ''');
+    } catch (_) {
+      // Ya existe
+    }
+  }
+  if (oldVersion < 7) {
   await db.execute('''
-    ALTER TABLE configuracion
-    ADD COLUMN modo_ticket TEXT NOT NULL DEFAULT 'PREGUNTAR'
+    ALTER TABLE detalle_venta
+    ADD COLUMN cantidad_mostrada REAL
+  ''');
+
+  await db.execute('''
+    ALTER TABLE detalle_venta
+    ADD COLUMN nombre_presentacion TEXT
+  ''');
+
+  await db.execute('''
+    ALTER TABLE detalle_venta
+    ADD COLUMN factor_conversion REAL
   ''');
 }
 }
@@ -63,6 +100,7 @@ if (oldVersion < 3) {
   await _crearProductos(db);
   await _crearProductosConversion(db);
   await _crearPreciosProducto(db);
+  await _crearPresentacionesProducto(db);
   await _crearHistorialPrecios(db);
 
   await _crearCompras(db);
@@ -241,6 +279,21 @@ if (oldVersion < 3) {
     ''');
   }
 
+  Future<void> _crearPresentacionesProducto(DatabaseExecutor db) async {
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS presentaciones_producto(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      producto_id INTEGER NOT NULL,
+      nombre TEXT NOT NULL,
+      factor_conversion REAL NOT NULL DEFAULT 1,
+      precio REAL NOT NULL,
+      codigo_barras TEXT,
+      activo INTEGER NOT NULL DEFAULT 1,
+      FOREIGN KEY (producto_id) REFERENCES productos(id)
+    )
+  ''');
+}
+
   Future<void> _crearHistorialPrecios(DatabaseExecutor db) async {
     await db.execute('''
       CREATE TABLE historial_precios(
@@ -323,21 +376,24 @@ if (oldVersion < 3) {
     ''');
   }
 
-  Future<void> _crearDetalleVenta(DatabaseExecutor db) async {
-    await db.execute('''
-      CREATE TABLE detalle_venta(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        venta_id INTEGER NOT NULL,
-        producto_id INTEGER NOT NULL,
-        cantidad REAL NOT NULL,
-        precio_unitario REAL NOT NULL,
-        descuento REAL NOT NULL DEFAULT 0,
-        subtotal REAL NOT NULL,
-        FOREIGN KEY (venta_id) REFERENCES ventas(id),
-        FOREIGN KEY (producto_id) REFERENCES productos(id)
-      )
-    ''');
-  }
+Future<void> _crearDetalleVenta(DatabaseExecutor db) async {
+  await db.execute('''
+    CREATE TABLE detalle_venta(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      venta_id INTEGER NOT NULL,
+      producto_id INTEGER NOT NULL,
+      cantidad REAL NOT NULL,
+      cantidad_mostrada REAL,
+      nombre_presentacion TEXT,
+      factor_conversion REAL,
+      precio_unitario REAL NOT NULL,
+      descuento REAL NOT NULL DEFAULT 0,
+      subtotal REAL NOT NULL,
+      FOREIGN KEY (venta_id) REFERENCES ventas(id),
+      FOREIGN KEY (producto_id) REFERENCES productos(id)
+    )
+  ''');
+}
 
   Future<void> _crearPagosVenta(DatabaseExecutor db) async {
     await db.execute('''
@@ -529,20 +585,21 @@ if (oldVersion < 3) {
     ''');
   }
 
-  Future<void> _crearMermas(DatabaseExecutor db) async {
-    await db.execute('''
-      CREATE TABLE mermas(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        producto_id INTEGER NOT NULL,
-        cantidad REAL NOT NULL,
-        motivo TEXT NOT NULL,
-        usuario_id INTEGER,
-        fecha TEXT NOT NULL,
-        FOREIGN KEY (producto_id) REFERENCES productos(id),
-        FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
-      )
-    ''');
-  }
+Future<void> _crearMermas(DatabaseExecutor db) async {
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS mermas(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      producto_id INTEGER NOT NULL,
+      cantidad REAL NOT NULL,
+      motivo TEXT NOT NULL,
+      descuenta_stock INTEGER NOT NULL DEFAULT 1,
+      usuario_id INTEGER,
+      fecha TEXT NOT NULL,
+      FOREIGN KEY (producto_id) REFERENCES productos(id),
+      FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+    )
+  ''');
+}
 
   Future<void> _crearAuditoria(DatabaseExecutor db) async {
     await db.execute('''
@@ -760,17 +817,8 @@ if (oldVersion < 3) {
       await db.insert('categorias', {'nombre': categoria});
     }
 
-    final motivos = [
-      'CONTEO_FISICO',
-      'PRODUCTO_ROTO',
-      'PRODUCTO_CADUCADO',
-      'PRODUCTO_PERDIDO',
-      'ERROR_CAPTURA',
-    ];
-
-    for (final motivo in motivos) {
-      await db.insert('motivos_ajuste', {'nombre': motivo});
-    }
+// No reinsertamos motivos_ajuste porque esa tabla no se borra.
+// Ya conserva sus datos base.
   }
 
   Future<List<Map<String, Object?>>> obtenerTablas() async {
@@ -786,4 +834,89 @@ if (oldVersion < 3) {
       _database = null;
     }
   }
+  Future<void> limpiarDatosPrueba() async {
+  final db = await database;
+
+  await db.transaction((txn) async {
+    await txn.execute('PRAGMA foreign_keys = OFF');
+
+    final tablasABorrar = [
+      'auditoria',
+      'sesiones_usuario',
+      'alertas',
+      'promociones',
+
+      'movimientos_caja',
+      'cajas',
+
+      'movimientos_credito',
+      'creditos',
+
+      'pagos_venta',
+      'consumo_lotes',
+      'detalle_venta',
+      'ventas',
+
+      'detalle_compra',
+      'lotes_inventario',
+      'compras',
+
+      'movimientos_inventario',
+      'mermas',
+      'gastos',
+
+      'historial_precios',
+      'precios_producto',
+      'presentaciones_producto',
+      'productos_conversion',
+      'productos',
+
+      'proveedores',
+      'marcas',
+      'categorias',
+      'clientes',
+    ];
+
+    for (final tabla in tablasABorrar) {
+      await txn.delete(tabla);
+      await txn.rawDelete(
+        "DELETE FROM sqlite_sequence WHERE name = ?",
+        [tabla],
+      );
+    }
+
+    final now = DateTime.now().toIso8601String();
+
+    await txn.insert('clientes', {
+      'id': 1,
+      'nombre': 'PUBLICO GENERAL',
+      'telefono': null,
+      'direccion': null,
+      'permite_fiado': 0,
+      'limite_credito': 0,
+      'bloqueado_credito': 0,
+      'activo': 1,
+      'fecha_registro': now,
+    });
+
+    final categorias = [
+      'Abarrotes',
+      'Ferretería',
+      'Bebidas',
+      'Dulces',
+      'Limpieza',
+      'Papelería',
+    ];
+
+    for (final categoria in categorias) {
+      await txn.insert('categorias', {
+        'nombre': categoria,
+      });
+    }
+
+
+
+    await txn.execute('PRAGMA foreign_keys = ON');
+  });
+}
 }
