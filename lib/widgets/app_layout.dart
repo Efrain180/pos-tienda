@@ -15,6 +15,7 @@ import 'app_sidebar.dart';
 import '../screens/usuarios/usuarios_screen.dart';
 import '../screens/auditoria/auditoria_screen.dart';
 import '../screens/mermas/mermas_screen.dart';
+import '../providers/licencia_provider.dart';
 
 class AppLayout extends StatefulWidget {
   const AppLayout({super.key});
@@ -134,13 +135,50 @@ _MenuItem(
                       bottom: BorderSide(color: Color(0xFFE5E7EB)),
                     ),
                   ),
-                  child: Text(
-                    currentItem.item.label,
-                    style: const TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+child: Row(
+  children: [
+    Expanded(
+      child: Text(
+        currentItem.item.label,
+        style: const TextStyle(
+          fontSize: 26,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    ),
+    Consumer<LicenciaProvider>(
+      builder: (context, licenciaProvider, child) {
+        final licencia = licenciaProvider.licencia;
+
+        if (licencia == null) {
+          return const SizedBox.shrink();
+        }
+
+        return Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 8,
+          ),
+          decoration: BoxDecoration(
+            color: licencia.vencida
+                ? Colors.red.withOpacity(0.12)
+                : Colors.green.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(
+            licencia.tipoLicencia == 'PRUEBA'
+                ? 'Prueba: ${licencia.diasRestantes} días'
+                : 'Licencia activa',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: licencia.vencida ? Colors.red : Colors.green,
+            ),
+          ),
+        );
+      },
+    ),
+  ],
+),
                 ),
                 Expanded(
                   child: Container(

@@ -15,6 +15,10 @@ class ProductoProvider extends ChangeNotifier {
 
   String _busqueda = '';
   String _estado = 'TODOS';
+  int _totalProductos = 0;
+  int _totalActivos = 0;
+  int _totalInactivos = 0;
+  int _totalStockBajo = 0;
 
   List<Producto> get productos => _productos;
   bool get cargando => _cargando;
@@ -22,6 +26,11 @@ class ProductoProvider extends ChangeNotifier {
   bool get hayMas => _hayMas;
   String get busqueda => _busqueda;
   String get estado => _estado;
+
+  int get totalProductos => _totalProductos;
+int get totalActivos => _totalActivos;
+int get totalInactivos => _totalInactivos;
+int get totalStockBajo => _totalStockBajo;
 
 Future<List<Producto>> buscarProductosParaVenta(
   String texto, {
@@ -48,6 +57,8 @@ Future<Producto?> obtenerProductoPorId(int id) async {
     _estado = estado;
     notifyListeners();
 
+    await cargarResumenProductos();
+
     if (_busqueda.isEmpty) {
       _productos = await _service.obtenerProductos(
         limit: _limite,
@@ -68,6 +79,18 @@ Future<Producto?> obtenerProductoPorId(int id) async {
     _cargando = false;
     notifyListeners();
   }
+
+  Future<void> cargarResumenProductos() async {
+  final resumen = await _service.obtenerResumenProductos();
+
+  _totalProductos = resumen['total'] ?? 0;
+  _totalActivos = resumen['activos'] ?? 0;
+  _totalInactivos = resumen['inactivos'] ?? 0;
+  _totalStockBajo = resumen['stockBajo'] ?? 0;
+
+  notifyListeners();
+}
+
 Future<List<Producto>> buscarProductosParaSeleccion(
   String texto, {
   int limit = 20,

@@ -19,26 +19,44 @@ class DatabaseService {
     return _database!;
   }
 
-  Future<Database> _initDatabase() async {
-    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-      sqfliteFfiInit();
-      databaseFactory = databaseFactoryFfi;
+Future<Database> _initDatabase() async {
+  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
+
+  late final Directory appDir;
+
+  if (Platform.isWindows) {
+    final programData = Platform.environment['PROGRAMDATA'];
+
+    if (programData == null || programData.trim().isEmpty) {
+      throw Exception('No se encontró la carpeta ProgramData');
     }
 
-    final Directory appDir = await getApplicationDocumentsDirectory();
-    final String dbPath = join(appDir.path, 'pos_abarrotes.db');
-
-    return await openDatabase(
-      dbPath,
-      version: 7,
-      onConfigure: (db) async {
-        await db.execute('PRAGMA foreign_keys = ON');
-      },
-      onCreate: _onCreate,
-      onUpgrade: _onUpgrade,
-    );
+    appDir = Directory(join(programData, 'POS-TIENDA'));
+  } else {
+    appDir = await getApplicationSupportDirectory();
   }
-  
+
+  if (!await appDir.exists()) {
+    await appDir.create(recursive: true);
+  }
+
+  final String dbPath = join(appDir.path, 'pos_abarrotes.db');
+
+  print('BASE DE DATOS: $dbPath');
+
+  return await openDatabase(
+    dbPath,
+    version: 10,
+    onConfigure: (db) async {
+      await db.execute('PRAGMA foreign_keys = ON');
+    },
+    onCreate: _onCreate,
+    onUpgrade: _onUpgrade,
+  );
+}
 
 Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
   if (oldVersion < 3) {
@@ -83,6 +101,68 @@ Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     ALTER TABLE detalle_venta
     ADD COLUMN factor_conversion REAL
   ''');
+}
+if (oldVersion < 8) {
+  try {
+    await db.execute('''
+      ALTER TABLE configuracion
+      ADD COLUMN negocio_id TEXT
+    ''');
+  } catch (_) {}
+
+  try {
+    await db.execute('''
+      ALTER TABLE configuracion
+      ADD COLUMN nube_activa INTEGER NOT NULL DEFAULT 0
+    ''');
+  } catch (_) {}
+
+  await db.update(
+    'configuracion',
+    {
+      'negocio_id': 'mi_tienda',
+      'nube_activa': 0,
+    },
+    where: 'id = ?',
+    whereArgs: [1],
+  );
+}
+if (oldVersion < 9) {
+  try {
+    await db.execute('''
+      ALTER TABLE configuracion
+      ADD COLUMN plan TEXT NOT NULL DEFAULT 'BASICO'
+    ''');
+  } catch (_) {}
+}
+if (oldVersion < 10) {
+  try {
+    await db.execute('''
+      ALTER TABLE configuracion
+      ADD COLUMN tipo_licencia TEXT NOT NULL DEFAULT 'PRUEBA'
+    ''');
+  } catch (_) {}
+
+  try {
+    await db.execute('''
+      ALTER TABLE configuracion
+      ADD COLUMN fecha_instalacion TEXT
+    ''');
+  } catch (_) {}
+
+  try {
+    await db.execute('''
+      ALTER TABLE configuracion
+      ADD COLUMN fecha_vencimiento TEXT
+    ''');
+  } catch (_) {}
+
+  try {
+    await db.execute('''
+      ALTER TABLE configuracion
+      ADD COLUMN clave_licencia TEXT
+    ''');
+  } catch (_) {}
 }
 }
 
@@ -653,7 +733,14 @@ Future<void> _crearMermas(DatabaseExecutor db) async {
         stock_minimo_global REAL NOT NULL DEFAULT 5,
         impresora_tickets TEXT,
         margen_ganancia_default REAL NOT NULL DEFAULT 25,
-        firebase_activo INTEGER NOT NULL DEFAULT 0
+        firebase_activo INTEGER NOT NULL DEFAULT 0,
+        negocio_id TEXT,
+        nube_activa INTEGER NOT NULL DEFAULT 0,
+        plan TEXT NOT NULL DEFAULT 'BASICO',
+        tipo_licencia TEXT NOT NULL DEFAULT 'PRUEBA',
+        fecha_instalacion TEXT,
+        fecha_vencimiento TEXT,
+        clave_licencia TEXT
         
       )
     ''');
@@ -770,15 +857,17 @@ Future<void> _crearMermas(DatabaseExecutor db) async {
       }
     }
 
-    await db.insert('usuarios', {
-      'id': 1,
-      'nombre': 'Administrador',
-      'usuario': 'admin',
-      'password_hash': 'admin123',
-      'rol_id': 1,
-      'activo': 1,
-      'fecha_creacion': now,
-    });
+/*
+await db.insert('usuarios', {
+  'id': 1,
+  'nombre': 'Administrador',
+  'usuario': 'admin',
+  'password_hash': 'admin123',
+  'rol_id': 1,
+  'activo': 1,
+  'fecha_creacion': now,
+});
+*/
 
     await db.insert('clientes', {
       'id': 1,
@@ -792,17 +881,20 @@ Future<void> _crearMermas(DatabaseExecutor db) async {
       'fecha_registro': now,
     });
 
-    await db.insert('configuracion', {
-      'id': 1,
-      'nombre_negocio': 'Mi Tienda',
-      'telefono': '',
-      'direccion': '',
-      'usa_fifo': 1,
-      'usa_fiados': 1,
-      'stock_minimo_global': 5,
-      'impresora_tickets': '',
-      'firebase_activo': 0,
-    });
+await db.insert('configuracion', {
+  'id': 1,
+  'nombre_negocio': '',
+  'telefono': '',
+  'direccion': '',
+  'usa_fifo': 1,
+  'usa_fiados': 1,
+  'stock_minimo_global': 5,
+  'impresora_tickets': '',
+  'firebase_activo': 0,
+  'negocio_id': '',
+  'nube_activa': 0,
+  'plan': 'BASICO',
+});
 
     final categorias = [
       'Abarrotes',

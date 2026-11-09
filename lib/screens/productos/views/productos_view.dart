@@ -12,6 +12,7 @@ import '../../../models/precio_producto.dart';
 import '../../../models/presentacion_producto.dart';
 import '../../../services/presentacion_producto_service.dart';
 
+
 class ProductosView extends StatelessWidget {
   const ProductosView({super.key});
 
@@ -31,13 +32,13 @@ class ProductosView extends StatelessWidget {
 @override
 Widget build(BuildContext context) {
   final provider = context.watch<ProductoProvider>();
+
   final productos = provider.productos;
 
-  final activos = productos.where((p) => p.estado == 'ACTIVO').length;
-  final inactivos = productos.where((p) => p.estado != 'ACTIVO').length;
-  final stockBajo = productos.where((p) {
-    return p.stockActual <= p.stockMinimo;
-  }).length;
+  final totalProductos = provider.totalProductos;
+  final activos = provider.totalActivos;
+  final inactivos = provider.totalInactivos;
+  final stockBajo = provider.totalStockBajo;
 
   return Container(
     color: const Color(0xFFF4F6F8),
@@ -72,7 +73,7 @@ Widget build(BuildContext context) {
             children: [
               _ProductoResumenCard(
                 label: 'Productos',
-                value: productos.length.toString(),
+                value: totalProductos.toString(),
                 icon: Icons.inventory_2,
                 color: Colors.blue,
               ),
@@ -99,6 +100,8 @@ Widget build(BuildContext context) {
               ),
             ],
           ),
+
+          // resto de tu código...
 
           const SizedBox(height: 14),
 

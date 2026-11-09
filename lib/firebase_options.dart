@@ -56,7 +56,6 @@ class DefaultFirebaseOptions {
     projectId: 'pos-tienda-5312b',
     storageBucket: 'pos-tienda-5312b.firebasestorage.app',
   );
-
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyCfTQWoNuzykmZ2S-CBB8x95h4x18iL9Eg',
     appId: '1:325841311507:ios:2baea9a9d23bf283f86ce6',

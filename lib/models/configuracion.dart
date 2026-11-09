@@ -9,6 +9,11 @@ class Configuracion {
   final String? impresoraTickets;
   final bool firebaseActivo;
   final double margenGananciaDefault;
+  final String? negocioId;
+  final bool nubeActiva;
+  final String? plan;
+  final String? tipoLicencia;
+  
 
   Configuracion({
     this.id,
@@ -21,6 +26,10 @@ class Configuracion {
     this.impresoraTickets,
     required this.firebaseActivo,
     required this.margenGananciaDefault,
+    this.negocioId,
+    this.nubeActiva = false,
+    this.plan,
+    this.tipoLicencia,
   });
 
   factory Configuracion.fromMap(Map<String, dynamic> map) {
@@ -36,6 +45,11 @@ class Configuracion {
       firebaseActivo: (map['firebase_activo'] as int) == 1,
       margenGananciaDefault:
           ((map['margen_ganancia_default'] ?? 25) as num).toDouble(),
+      negocioId: map['negocio_id'] as String?,
+      nubeActiva: (map['nube_activa'] as int? ?? 0) == 1,
+      plan: map['plan'] as String?,
+      tipoLicencia: map['tipo_licencia'] as String?,
+          
     );
   }
 
@@ -51,6 +65,10 @@ class Configuracion {
       'impresora_tickets': impresoraTickets,
       'firebase_activo': firebaseActivo ? 1 : 0,
       'margen_ganancia_default': margenGananciaDefault,
+      'negocio_id': negocioId,
+      'nube_activa': nubeActiva ? 1 : 0,
+      'plan': plan,
+      'tipo_licencia': tipoLicencia,
     };
   }
 }

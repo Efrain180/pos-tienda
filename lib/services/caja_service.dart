@@ -3,6 +3,7 @@ import '../models/caja.dart';
 import '../models/movimiento_caja.dart';
 import 'auditoria_service.dart';
 import 'firebase_sync_service.dart';
+import '../services/backup_service.dart';
 
 class CajaService {
   final _dbService = DatabaseService.instance;
@@ -262,6 +263,11 @@ class CajaService {
       detalle:
           'Caja cerrada. Esperado \$${esperado.toStringAsFixed(2)}, contado \$${montoContado.toStringAsFixed(2)}, faltante \$${faltante.toStringAsFixed(2)}, sobrante \$${sobrante.toStringAsFixed(2)}',
     );
+
+    try {
+  await BackupService().crearBackup();
+} catch (_) {}
+
     try {
   FirebaseSyncService().sincronizarTodo().catchError((_) {});
 

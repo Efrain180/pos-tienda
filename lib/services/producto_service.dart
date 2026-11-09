@@ -29,6 +29,40 @@ class ProductoService {
     return id;
   }
 
+Future<Map<String, int>> obtenerResumenProductos() async {
+  final db = await _dbService.database;
+
+  final totalResult = await db.rawQuery('''
+    SELECT COUNT(*) AS total
+    FROM productos
+  ''');
+
+  final activosResult = await db.rawQuery('''
+    SELECT COUNT(*) AS total
+    FROM productos
+    WHERE estado = 'ACTIVO'
+  ''');
+
+  final inactivosResult = await db.rawQuery('''
+    SELECT COUNT(*) AS total
+    FROM productos
+    WHERE estado != 'ACTIVO'
+  ''');
+
+  final stockBajoResult = await db.rawQuery('''
+    SELECT COUNT(*) AS total
+    FROM productos
+    WHERE estado = 'ACTIVO'
+      AND stock_actual <= stock_minimo
+  ''');
+
+  return {
+    'total': (totalResult.first['total'] as num).toInt(),
+    'activos': (activosResult.first['total'] as num).toInt(),
+    'inactivos': (inactivosResult.first['total'] as num).toInt(),
+    'stockBajo': (stockBajoResult.first['total'] as num).toInt(),
+  };
+}
 Future<List<Producto>> obtenerProductos({
   int limit = 50,
   int offset = 0,
